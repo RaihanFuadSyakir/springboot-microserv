@@ -1,0 +1,94 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.tar.gz
+*.orig
+
+# Kotlin
+*.kotlin_metadata
+*.kotlin_built
+*.kotlincache
+
+# Logs
+*.log
+logs/
+*.out
+
+# Environment specific
+.env
+.env.local
+.env.*.local
+**/local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Icon?
+desktop.ini
+
+# Database
+*.db
+*.db-journal
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Unit test cache
+.nyc_output
+
+# Temp folder for code coverage reports
+tmp/
+
+# Local gradle settings
+local.properties
+
+# Docker
+.docker/
+
+# Docker Compose
+*.yml
+!docker-compose.yml
+!*.yaml
+
+# IntelliJ IDEA
+out/
+
+# Temporary folders for JVM crash logs
+hs_err_pid*
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Gradle daemon
+.gradle/
+
+# Spring Boot
+target/
+!target/config/application.properties
