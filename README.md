@@ -265,4 +265,5 @@ This project implements a **modern, enterprise-grade microservice ecosystem** us
 
 ---
 
-**Author:** *System Design & Gradle Integration by ChatGPT (GPT-5)*
+**Author:** *System Design & Gradle Integration by Qwen*  
+**Updated by:** *Qwen*
