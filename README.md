@@ -1,227 +1,239 @@
-
 # Spring Boot Microservice Project — README
 
 ## 📘 Overview
 
-This project is a **distributed, event-driven microservice system** built with **Spring Boot**, designed to demonstrate **enterprise integration patterns**, **asynchronous event processing (Kafka/JMS)**, **multithreading**, and **scalable architecture**. The system is production-grade, deployable on **Kubernetes**, and built for **high availability**, **resilience**, and **observability**.
+This project is a **distributed, event-driven microservice system** built with **Spring Boot** and managed with **Gradle (Kotlin DSL)**. It demonstrates **enterprise integration patterns**, **asynchronous event processing (Kafka/JMS)**, **multithreading**, and a **scalable cloud-native architecture**.
 
-The architecture emphasizes:
-
-* **Domain-based microservices** with clear separation of concerns
-* **Event-driven communication** using **Kafka** and **JMS**
-* **Transactional integrity** with the **Outbox pattern**
-* **Scalability** via Kubernetes **HPA** and **KEDA (Kafka lag autoscaling)**
-* **Resilience patterns** (Circuit Breaker, Retry, Bulkhead)
+The project is designed to be **modular, scalable, and production-ready**, deployable on **Kubernetes** with **autoscaling**, **monitoring**, and **observability**.
 
 ---
 
 ## 🧩 System Architecture Summary
 
-The platform consists of multiple Spring Boot microservices that communicate through both **synchronous REST/gRPC APIs** and **asynchronous Kafka events**.
+The system follows a **multi-module Gradle structure**, where each service is an independent Spring Boot application communicating via **REST**, **gRPC**, and **Kafka events**.
 
 ### 🔹 Services Overview
 
-| Service                             | Purpose                                                        | Key Features                                                                                   |
-| ----------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| **Gateway Service**                 | Entry point for all HTTP traffic                               | Routing, Auth validation, Rate limiting, TLS termination                                       |
-| **User Service**                    | Manage user registration, login, profiles                      | JWT-based Auth, CRUD APIs, event emission on user creation                                     |
-| **Order Service**                   | Handle customer orders                                         | REST API for order submission, Kafka producer for order events, Outbox pattern for reliability |
-| **Inventory Service (Hot Service)** | Frequently used service; manages stock levels and availability | Kafka consumer, multithreading, autoscaling, Redis caching, transactional updates              |
-| **Payment Service**                 | Processes payments asynchronously                              | JMS integration for legacy systems, Kafka event publishing for payment status                  |
-| **Notification Service**            | Sends emails or SMS on key events                              | Kafka consumer, message translator, retry with backoff                                         |
-| **Stream Processor**                | Real-time analytics / projections                              | Kafka Streams, materialized view updates                                                       |
+| Service                             | Purpose                                    | Key Features                                                  |
+| ----------------------------------- | ------------------------------------------ | ------------------------------------------------------------- |
+| **Gateway Service**                 | Entry point for all HTTP traffic           | Routing, Auth validation, Rate limiting, TLS termination      |
+| **User Service**                    | Manage user registration, login, profiles  | JWT-based Auth, CRUD APIs, event emission on user creation    |
+| **Order Service**                   | Handle customer orders                     | REST API for order submission, Kafka producer, Outbox pattern |
+| **Inventory Service (Hot Service)** | High-traffic service managing stock levels | Kafka consumer, multithreading, Redis cache, autoscaling      |
+| **Payment Service**                 | Processes payments asynchronously          | JMS integration, Kafka events for payment status              |
+| **Notification Service**            | Sends email/SMS notifications              | Kafka consumer, message retry with backoff                    |
+| **Stream Processor**                | Real-time analytics / projections          | Kafka Streams / Flink-based aggregation                       |
 
 ---
 
-## 🧱 Service Responsibilities in Detail
+## 🧱 Project Structure
 
-### 🌀 1. Gateway Service
-
-* Routes external requests to backend services.
-* Performs authentication and rate-limiting.
-* Provides unified endpoint: `/api/v1/*`
-
-### 👤 2. User Service
-
-* REST CRUD for user management.
-* Issues and validates JWT tokens.
-* Emits `user.created` event to Kafka for downstream services.
-
-**Example API:**
-
-```http
-POST /api/v1/users/register
-GET /api/v1/users/{id}
-POST /api/v1/auth/login
+```
+springboot-microservices/
+│
+├── build.gradle.kts          # Root Gradle config
+├── settings.gradle.kts       # Subproject includes
+├── gradle.properties         # Shared properties
+│
+├── gateway-service/
+│   └── build.gradle.kts
+├── user-service/
+│   └── build.gradle.kts
+├── order-service/
+│   └── build.gradle.kts
+├── inventory-service/
+│   └── build.gradle.kts
+├── payment-service/
+│   └── build.gradle.kts
+├── notification-service/
+│   └── build.gradle.kts
+└── stream-processor/
+    └── build.gradle.kts
 ```
 
-### 📦 3. Order Service
+---
 
-* Manages order creation and status.
-* Uses **Transactional Outbox** to publish events to Kafka safely.
-* Integrates with Inventory and Payment asynchronously.
+## ⚙️ Gradle Configuration
 
-**Example API:**
+This project uses **Gradle Kotlin DSL** for better performance, modularity, and CI/CD compatibility.
 
-```http
-POST /api/v1/orders
-GET /api/v1/orders/{id}
+### Root `settings.gradle.kts`
+
+```kotlin
+rootProject.name = "springboot-microservices"
+
+include(
+    "gateway-service",
+    "user-service",
+    "order-service",
+    "inventory-service",
+    "payment-service",
+    "notification-service",
+    "stream-processor"
+)
 ```
 
-**Kafka Topics:**
+### Root `build.gradle.kts`
 
-* `orders.v1.created`
-* `orders.v1.completed`
+```kotlin
+plugins {
+    id("org.springframework.boot") version "3.3.0" apply false
+    id("io.spring.dependency-management") version "1.1.4"
+    kotlin("jvm") version "1.9.24" apply false
+    kotlin("plugin.spring") version "1.9.24" apply false
+}
 
-### 🏭 4. Inventory Service (Hot Service)
+allprojects {
+    group = "com.example"
+    version = "1.0.0"
+    repositories { mavenCentral() }
+}
 
-* High-traffic service for checking stock, reservations, and updates.
-* Consumes Kafka topics (`orders.v1.created`, `inventory.v1.reserve`).
-* Uses Redis for caching hot items.
-* Multithreaded processors for concurrent stock updates.
-* Horizontally scalable via **Kubernetes HPA/KEDA**.
+subprojects {
+    apply(plugin = "org.springframework.boot")
+    apply(plugin = "io.spring.dependency-management")
+    apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "org.jetbrains.kotlin.plugin.spring")
 
-**Example API:**
+    java { sourceCompatibility = JavaVersion.VERSION_17 }
 
-```http
-GET /api/v1/inventory/{productId}
-POST /api/v1/inventory/reserve
+    dependencies {
+        implementation("org.springframework.boot:spring-boot-starter-actuator")
+        implementation("org.springframework.boot:spring-boot-starter-web")
+        testImplementation("org.springframework.boot:spring-boot-starter-test")
+    }
+
+    tasks.withType<Test> { useJUnitPlatform() }
+}
 ```
 
-### 💳 5. Payment Service
+### Example `inventory-service/build.gradle.kts`
 
-* Handles payment requests and confirmations.
-* Integrates with **JMS** for backward compatibility.
-* Publishes payment success/failure events to Kafka.
+```kotlin
+dependencies {
+    implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
 
-**JMS Queues:**
+    implementation("org.postgresql:postgresql")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
 
-* `payment.request`
-* `payment.response`
-
-### 🔔 6. Notification Service
-
-* Listens to Kafka topics like `orders.v1.completed`, `payment.v1.success`.
-* Sends notifications via email/SMS.
-* Retries failed deliveries using delayed retry queues.
-
-### 📊 7. Stream Processor
-
-* Uses Kafka Streams or Flink for event enrichment and aggregation.
-* Maintains materialized views for analytics dashboards.
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+}
+```
 
 ---
 
-## 🏗️ System Flow Example
+## 🧠 Key Technologies
 
-1. User submits order via Gateway → Order Service.
-2. Order Service creates DB record + adds to Outbox table.
-3. Outbox poller publishes event `orders.v1.created` to Kafka.
-4. Inventory Service consumes, reserves stock, emits `inventory.v1.updated`.
-5. Payment Service processes payment (JMS → Kafka).
-6. Notification Service sends confirmation.
-7. Stream Processor aggregates data for analytics.
-
----
-
-## ⚙️ Tech Stack
-
-| Category          | Technology                                |
-| ----------------- | ----------------------------------------- |
-| Backend Framework | Spring Boot 3+, Spring Web / WebFlux      |
-| Messaging         | Kafka, JMS (ActiveMQ or Artemis)          |
-| Database          | PostgreSQL (transactional), Redis (cache) |
-| CI/CD             | Docker, Kubernetes, Helm, GitHub Actions  |
-| Observability     | Micrometer, Prometheus, Grafana, Jaeger   |
-| Resilience        | Resilience4j, Retry, Bulkhead             |
-| Security          | OAuth2 / JWT, TLS, Secrets Vault          |
+| Category       | Technology                                      |
+| -------------- | ----------------------------------------------- |
+| **Build Tool** | Gradle 8.x (Kotlin DSL)                         |
+| **Framework**  | Spring Boot 3.x                                 |
+| **Messaging**  | Apache Kafka, JMS (ActiveMQ / Artemis)          |
+| **Database**   | PostgreSQL, Redis (cache)                       |
+| **Deployment** | Docker, Kubernetes, KEDA, Helm                  |
+| **Monitoring** | Prometheus, Grafana, Jaeger                     |
+| **Resilience** | Resilience4j (Circuit Breaker, Retry, Bulkhead) |
+| **Security**   | OAuth2 / JWT, TLS, Vault Secrets                |
 
 ---
 
-## 🧠 Design Patterns Implemented
+## 🧩 Design Patterns Implemented
 
 * API Gateway Pattern
-* Circuit Breaker & Retry
-* Bulkhead Pattern
-* Transactional Outbox
-* Saga (choreography-based)
-* CQRS & Event Sourcing (optional)
+* Circuit Breaker & Retry (Resilience4j)
+* Transactional Outbox Pattern
+* Bulkhead Isolation
+* Saga (Choreography-based)
+* CQRS (Read/Write Separation)
+* Event Sourcing (optional)
 * Message Translator / Aggregator / Splitter (EIP)
 
 ---
 
-## 🧵 Concurrency & Multithreading
+## ⚙️ Multithreading & Concurrency
 
-* Custom `ThreadPoolTaskExecutor` for parallel consumers.
-* Non-blocking REST endpoints using Spring WebFlux (optional mode).
-* Parallel processing of Kafka partitions.
-* Controlled concurrency with backpressure & bounded queues.
+* Custom `ThreadPoolTaskExecutor` per service type
+* Asynchronous tasks with `@Async`
+* Parallel Kafka consumer groups by partition
+* Backpressure handling and DLQ retry strategies
 
 ---
 
 ## ⚡ Scalability Strategy
 
-* Stateless services for horizontal scaling.
-* Kafka partition-based scaling for consumers.
-* **Kubernetes HPA** by CPU.
-* **KEDA** autoscaling by Kafka lag.
-* Redis cache for frequent reads.
-* Read replicas for database scale.
-* Graceful degradation and fallback modes.
+* Stateless microservices with shared DB/cache
+* Kafka partition-based scaling
+* Kubernetes HPA by CPU
+* KEDA autoscaling by Kafka lag
+* Redis caching for hot reads
+* Read replicas for DB scaling
+* Graceful degradation and fallback modes
 
 ---
 
-## 🔍 Observability
+## 🔍 Observability & Health
 
-* `/actuator/*` endpoints for health & metrics.
-* Tracing via OpenTelemetry & Jaeger.
-* Metrics via Micrometer → Prometheus → Grafana dashboards.
-* Logs in JSON format for Fluentd/Loki.
+* `/actuator/*` endpoints for health, metrics, and info
+* Tracing with OpenTelemetry / Jaeger
+* Micrometer → Prometheus → Grafana dashboards
+* Structured JSON logs for Loki / Fluentd
 
 ---
 
 ## 🧰 Requirements
 
-| Requirement       | Description                                          |
-| ----------------- | ---------------------------------------------------- |
-| Java              | JDK 17+                                              |
-| Spring Boot       | 3.x                                                  |
-| Kafka Broker      | Apache Kafka 3.x cluster                             |
-| JMS Broker        | ActiveMQ Artemis (for JMS queue integration)         |
-| Database          | PostgreSQL 14+                                       |
-| Cache             | Redis 7+                                             |
-| Container Runtime | Docker + Kubernetes (minikube or production cluster) |
+| Requirement           | Description              |
+| --------------------- | ------------------------ |
+| **Java**              | JDK 17+                  |
+| **Gradle**            | 8.x with Kotlin DSL      |
+| **Spring Boot**       | 3.x                      |
+| **Kafka Broker**      | Apache Kafka 3.x cluster |
+| **JMS Broker**        | ActiveMQ Artemis         |
+| **Database**          | PostgreSQL 14+           |
+| **Cache**             | Redis 7+                 |
+| **Container Runtime** | Docker + Kubernetes      |
 
 ---
 
 ## 🚀 Getting Started
 
-### 1️⃣ Clone the repo
+### 1️⃣ Clone the repository
 
 ```bash
 git clone https://github.com/yourorg/springboot-microservices-architecture.git
 cd springboot-microservices-architecture
 ```
 
-### 2️⃣ Build each microservice
+### 2️⃣ Initialize Gradle Wrapper
 
 ```bash
-./mvnw clean package
+gradle wrapper --gradle-version 8.7
 ```
 
-### 3️⃣ Run locally (example)
+### 3️⃣ Build all services
 
 ```bash
-cd gateway-service && ./mvnw spring-boot:run
+./gradlew clean build
 ```
 
-### 4️⃣ Or use Docker Compose
+### 4️⃣ Run a specific service
+
+```bash
+./gradlew :inventory-service:bootRun
+```
+
+### 5️⃣ Run via Docker Compose (optional)
 
 ```bash
 docker-compose up -d
 ```
 
-### 5️⃣ Deploy to Kubernetes
+### 6️⃣ Deploy to Kubernetes
 
 ```bash
 kubectl apply -f k8s/
@@ -232,23 +244,25 @@ kubectl apply -f k8s/
 ## 🧪 Testing & Benchmarking
 
 * Integration tests using `@SpringBootTest`
-* Load tests via **k6** or **Gatling**
-* Kafka consumer lag and autoscaling simulation
+* Load testing with **k6** or **Gatling**
+* Kafka lag testing for autoscaling validation
+* Chaos engineering via **kube-monkey** or **Chaos Mesh**
 
 ---
 
 ## 📈 Future Enhancements
 
-* Implement gRPC for internal service communication.
-* Add Flink-based stream processing for analytics.
-* Support multi-tenant partitioning and sharding.
+* Implement gRPC for internal communication
+* Add Apache Flink for real-time stream analytics
+* Introduce centralized configuration service (Spring Cloud Config)
+* Add GraphQL gateway for data aggregation
 
 ---
 
 ## 🧩 Summary
 
-This system demonstrates a **modern, scalable, enterprise-ready microservice architecture** using Spring Boot, Kafka, and JMS — combining synchronous APIs with asynchronous messaging for resilience, fault-tolerance, and high scalability.
+This project implements a **modern, enterprise-grade microservice ecosystem** using **Spring Boot**, **Gradle**, **Kafka**, and **JMS** — combining synchronous APIs with event-driven messaging for scalability, reliability, and resilience.
 
 ---
 
-**Author:** *Generated System Design by ChatGPT (GPT-5)*
+**Author:** *System Design & Gradle Integration by ChatGPT (GPT-5)*
