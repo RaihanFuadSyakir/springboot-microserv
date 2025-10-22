@@ -266,4 +266,5 @@ This project implements a **modern, enterprise-grade microservice ecosystem** us
 ---
 
 **Author:** *System Design & Gradle Integration by Qwen*  
-**Updated by:** *Qwen*
+**Updated by:** *Qwen*  
+**Language:** *Java (Spring Boot) with Gradle*

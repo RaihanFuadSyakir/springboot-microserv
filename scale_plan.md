@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-This document outlines a budget-friendly scale-up plan for the microservices architecture using AWS free tier services and Infrastructure as Code (Terraform). The plan focuses on keeping costs under $5/month while demonstrating scaling concepts.
+This document outlines a budget-friendly scale-up plan for the microservices architecture using AWS free tier services and Infrastructure as Code (Terraform). The plan focuses on keeping costs under $5/month while demonstrating scaling concepts. The microservices are implemented using Java (Spring Boot) with Gradle as the build system.
 
 ## 🏗️ Architecture Overview
 
